@@ -34,6 +34,7 @@ namespace Grupp2_SUppgift
 
         private void btnUpd_Click(object sender, EventArgs e)
         {
+            //Uppdaterar tblLag i lagDB
             this.tblLagTableAdapter.Update(this.lagDBDataSet.tblLag);
         }
     }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
 using System.Security.Cryptography;
@@ -31,7 +32,7 @@ namespace Grupp2_SUppgift
         }
         private void button1_Click(object sender, EventArgs e)
         {
-
+            //gömmer startsidan och öppnar frmNyttLag
             this.Hide();
 
             frmNyttLag Test = new frmNyttLag();
@@ -53,9 +54,10 @@ namespace Grupp2_SUppgift
             //lagen ska sedan skrivas i textrutor
             if (e.RowIndex >= 0)
             {
+                //Hämta värdet grån DataGrid
                 string lagnamn = dataGridView1.Rows[e.RowIndex].Cells[0].Value.ToString();
 
-                //Fyll nästa tomma TextBox
+                //Fyll nästa tomma TextBox och kolla att lagen är unika
                 if (string.IsNullOrEmpty(txtLagEtt.Text) && txtLagTva.Text != lagnamn && txtLagTre.Text != lagnamn && txtLagFyra.Text != lagnamn)
                 {
                     txtLagEtt.Text = lagnamn;
@@ -72,7 +74,14 @@ namespace Grupp2_SUppgift
                 {
                     txtLagFyra.Text = lagnamn;
                 }
-                else
+                //Unika värden
+                else if (txtLagEtt.Text == lagnamn || txtLagTva.Text == lagnamn || txtLagTre.Text == lagnamn || txtLagFyra.Text == lagnamn)
+                {
+                    MessageBox.Show("Alla lag måste vara unika!");
+
+                }
+                //Alla txtboxar fyllda
+                else if (txtLagFyra.Text != "")
                 {
                     MessageBox.Show("Alla 4 lag är redan valda.");
                 }
@@ -88,6 +97,7 @@ namespace Grupp2_SUppgift
 
         private void cmbValjLag_MouseClick(object sender, MouseEventArgs e)
         {
+            //Rensa textrutor om du ändrar sport
             txtLagEtt.Clear();
             txtLagTva.Clear();
             txtLagTre.Clear();
@@ -96,6 +106,7 @@ namespace Grupp2_SUppgift
 
         private void btnClear_Click(object sender, EventArgs e)
         {
+            //Rensa sidan
             txtLagEtt.Clear();
             txtLagTva.Clear();
             txtLagTre.Clear();
@@ -106,13 +117,19 @@ namespace Grupp2_SUppgift
         }
     public class Team
     {
+            //Alla positioner för Team
         public string Name { get; set; }
         public int Points { get; set; }
         public int GoalsFor { get; set; }
         public int GoalsAgainst { get; set; }
-    }
+        public int Vinst { get; set; }
+        public int Oavgjord { get; set; }
+        public int Forlust { get; set; }
+        public int TotSpel { get; set; }
+        }
     public class Match
     {
+            //Hemma/bortalag och mål
         public Team Home { get; set; }
         public Team Away { get; set; }
         public int HomeGoals { get; set; }
@@ -121,13 +138,19 @@ namespace Grupp2_SUppgift
 
         private void btnRun_Click(object sender, EventArgs e)
         {
+            //Rensa tabeller vid körning
             DGVresultat.Rows.Clear();
             DGVTabell.DataSource = null;
+            //Slumptal för mål
             Random slumpMal = new Random();
+            //Lag som väljs i combobox
             string textCmb = cmbValjLag.Text;
+            //olika varianter på att ta värdet från txtruta
             string[] lagArray = new string[4];
             string namn1 = txtLagEtt.Text;
-            //MessageBox.Show($"{namn1}");
+            //MessageBox.Show($"{namn1}"); //Test
+
+            //Skapa listor för att lagra positiooner
             List<Match> matches = new List<Match>();
             List<Team> teams = new List<Team>
                 {
@@ -138,65 +161,89 @@ namespace Grupp2_SUppgift
                 };
 
             //Hockeyresultat
+            //Hämta sport från combobox
             if (cmbValjLag.SelectedIndex == 0)
             {
-                for (int i = 0; i < teams.Count; i++)
+                //Alla möter alla 2ggr
+                for (int k = 0; k < 2; k++)
                 {
-                    for (int j = i+1; j < teams.Count; j++)
+                    //Valda Lagen möter varandra och mål slumpas fram och avgör matchen
+                    for (int i = 0; i < teams.Count; i++)
                     {
-                        var home = teams[i];
-                        var away = teams[j];
-
-                        // Slumpa resultat (0-6 mål)
-                        int homeGoals = slumpMal.Next(0, 7);
-                        int awayGoals = slumpMal.Next(0, 7);
-
-                        // Skapa match
-                        matches.Add(new Match
+                        for (int j = i + 1; j < teams.Count; j++)
                         {
-                            Home = home,
-                            Away = away,
-                            HomeGoals = homeGoals,
-                            AwayGoals = awayGoals
-                        });
+                            var home = teams[i];
+                            var away = teams[j];
 
-                        // Uppdatera statistik
-                        home.GoalsFor += homeGoals;
-                        home.GoalsAgainst += awayGoals;
-                        away.GoalsFor += awayGoals;
-                        away.GoalsAgainst += homeGoals;
+                            // Slumpa resultat (0-6 mål)
+                            int homeGoals = slumpMal.Next(0, 7);
+                            int awayGoals = slumpMal.Next(0, 7);
 
-                        if (homeGoals > awayGoals)
-                        {
-                            home.Points += 3;
+                            // Skapa match
+                            matches.Add(new Match
+                            {
+                                Home = home,
+                                Away = away,
+                                HomeGoals = homeGoals,
+                                AwayGoals = awayGoals
+                            });
+
+                            // Räkna ihop "statistiken" coh antal spelade matcher
+                            home.GoalsFor += homeGoals;
+                            home.GoalsAgainst += awayGoals;
+                            away.GoalsFor += awayGoals;
+                            away.GoalsAgainst += homeGoals;
+                            home.TotSpel++;
+                            away.TotSpel++;
+
+                            //Vid vinst, hemmalag +3, vinst +1 och bortalag förlust +1
+                            if (homeGoals > awayGoals)
+                            {
+                                home.Points += 3;
+                                home.Vinst++;
+                                away.Forlust++;
+
+                            }
+                            else if (awayGoals > homeGoals)
+                            {
+                                away.Points += 3;
+                                away.Vinst++;
+                                home.Forlust++;
+                            }
+                            else
+                            {
+                                home.Points += 1;
+                                away.Points += 1;
+                                home.Oavgjord++;
+                                away.Oavgjord++;
+                            }
+                            //Skriv ut resultatet i DGVresultat
+                            DGVresultat.Rows.Add($"{home.Name} \t\t {homeGoals} - {awayGoals} \t\t {away.Name}");
+
+                            //Skapa tabell för att skriva ut resultattabellen
+                            //sortera på poäng, och målskillnad, lägg ut alla värden i kolumner
+                            var table = teams
+                               .OrderByDescending(t => t.Points)
+                               .ThenByDescending(t => t.GoalsFor)
+                               .ThenByDescending(t => t.GoalsAgainst)
+                               .Select(t => new
+                               {
+                                   Lagnamn = t.Name,
+                                   Poäng = t.Points,
+                                   GjordaMål = t.GoalsFor,
+                                   Insläppta = t.GoalsAgainst,
+                                   Målskillnad = t.GoalsFor - t.GoalsAgainst,
+                                   TotMatcher = t.TotSpel,
+                                   Vinster = t.Vinst,
+                                   Förluster = t.Forlust,
+                                   Oavgjorda = t.Oavgjord
+                               })
+                               .ToList();
+
+                            // Visa tabell i andra DataGridView
+                            DGVTabell.DataSource = null;
+                            DGVTabell.DataSource = table;
                         }
-                        else if (awayGoals > homeGoals)
-                        {
-                            away.Points += 3;
-                        }
-                        else
-                        {
-                            home.Points += 1; away.Points += 1;
-                        }
-                        DGVresultat.Rows.Add($"{home.Name} \t {homeGoals} - {awayGoals} \t {away.Name}");
-
-                        var table = teams
-                           .OrderByDescending(t => t.Points)
-                           .ThenByDescending(t => t.GoalsFor)
-                           .ThenByDescending(t => t.GoalsAgainst)
-                           .Select(t => new
-                           {
-                               Lag = t.Name,
-                               Poäng = t.Points,
-                               GjordaMål = t.GoalsFor,
-                               Insläppta = t.GoalsAgainst,
-                               Målskillnad = t.GoalsFor - t.GoalsAgainst
-                           })
-                           .ToList();
-
-                        // Visa tabell i andra DataGridView
-                        DGVTabell.DataSource = null;
-                        DGVTabell.DataSource = table;
                     }
                 }
                 
@@ -211,9 +258,9 @@ namespace Grupp2_SUppgift
                         var home = teams[i];
                         var away = teams[j];
 
-                        // Slumpa resultat (0-6 mål)
-                        int homeGoals = slumpMal.Next(0, 3);
-                        int awayGoals = slumpMal.Next(0, 3);
+                        // Slumpa resultat (0-3 mål)
+                        int homeGoals = slumpMal.Next(0, 4);
+                        int awayGoals = slumpMal.Next(0, 4);
 
                         // Skapa match
                         matches.Add(new Match
@@ -224,37 +271,55 @@ namespace Grupp2_SUppgift
                             AwayGoals = awayGoals
                         });
 
-                        // Uppdatera statistik
+                        // Räkna ihop "statistiken" coh antal spelade matcher
                         home.GoalsFor += homeGoals;
                         home.GoalsAgainst += awayGoals;
                         away.GoalsFor += awayGoals;
                         away.GoalsAgainst += homeGoals;
+                        home.TotSpel++;
+                        away.TotSpel++;
 
+                        //Vid vinst, hemmalag +3, vinst +1 och bortalag förlust +1
                         if (homeGoals > awayGoals)
                         {
                             home.Points += 3;
+                            home.Vinst++;
+                            away.Forlust++;
+
                         }
                         else if (awayGoals > homeGoals)
                         {
                             away.Points += 3;
+                            away.Vinst++;
+                            home.Forlust++;
                         }
                         else
                         {
-                            home.Points += 1; away.Points += 1;
+                            home.Points += 1;
+                            away.Points += 1;
+                            home.Oavgjord++;
+                            away.Oavgjord++;
                         }
-                        DGVresultat.Rows.Add($"{home.Name} {homeGoals} - {awayGoals} {away.Name}");
+                        //Skriv ut resultatet i DGVresultat
+                        DGVresultat.Rows.Add($"{home.Name} \t\t {homeGoals} - {awayGoals} \t\t {away.Name}");
 
+                        //Skapa tabell för att skriva ut resultattabellen
+                        //sortera på poäng, och målskillnad, lägg ut alla värden i kolumner
                         var table = teams
                            .OrderByDescending(t => t.Points)
                            .ThenByDescending(t => t.GoalsFor)
                            .ThenByDescending(t => t.GoalsAgainst)
                            .Select(t => new
                            {
-                               Lag = t.Name,
+                               Lagnamn = t.Name,
                                Poäng = t.Points,
                                GjordaMål = t.GoalsFor,
                                Insläppta = t.GoalsAgainst,
-                               Målskillnad = t.GoalsFor - t.GoalsAgainst
+                               Målskillnad = t.GoalsFor - t.GoalsAgainst,
+                               TotMatcher = t.TotSpel,
+                               Vinster = t.Vinst,
+                               Förluster = t.Forlust,
+                               Oavgjorda = t.Oavgjord
                            })
                            .ToList();
 
@@ -276,9 +341,9 @@ namespace Grupp2_SUppgift
                         var home = teams[i];
                         var away = teams[j];
 
-                        // Slumpa resultat (0-6 mål)
-                        int homeGoals = slumpMal.Next(50, 120);
-                        int awayGoals = slumpMal.Next(50, 120);
+                        // Slumpa resultat (50-120 mål)
+                        int homeGoals = slumpMal.Next(50, 121);
+                        int awayGoals = slumpMal.Next(50, 121);
 
                         // Skapa match
                         matches.Add(new Match
@@ -289,37 +354,55 @@ namespace Grupp2_SUppgift
                             AwayGoals = awayGoals
                         });
 
-                        // Uppdatera statistik
+                        // Räkna ihop "statistiken" coh antal spelade matcher
                         home.GoalsFor += homeGoals;
                         home.GoalsAgainst += awayGoals;
                         away.GoalsFor += awayGoals;
                         away.GoalsAgainst += homeGoals;
+                        home.TotSpel++;
+                        away.TotSpel++;
 
+                        //Vid vinst, hemmalag +3, vinst +1 och bortalag förlust +1
                         if (homeGoals > awayGoals)
                         {
                             home.Points += 3;
+                            home.Vinst++;
+                            away.Forlust++;
+
                         }
                         else if (awayGoals > homeGoals)
                         {
                             away.Points += 3;
+                            away.Vinst++;
+                            home.Forlust++;
                         }
                         else
                         {
-                            home.Points += 1; away.Points += 1;
+                            home.Points += 1;
+                            away.Points += 1;
+                            home.Oavgjord++;
+                            away.Oavgjord++;
                         }
-                        DGVresultat.Rows.Add($"{home.Name} {homeGoals} - {awayGoals} {away.Name}");
+                        //Skriv ut resultatet i DGVresultat
+                        DGVresultat.Rows.Add($"{home.Name} \t\t {homeGoals} - {awayGoals} \t\t {away.Name}");
 
+                        //Skapa tabell för att skriva ut resultattabellen
+                        //sortera på poäng, och målskillnad, lägg ut alla värden i kolumner
                         var table = teams
                            .OrderByDescending(t => t.Points)
                            .ThenByDescending(t => t.GoalsFor)
                            .ThenByDescending(t => t.GoalsAgainst)
                            .Select(t => new
                            {
-                               Lag = t.Name,
+                               Lagnamn = t.Name,
                                Poäng = t.Points,
                                GjordaMål = t.GoalsFor,
                                Insläppta = t.GoalsAgainst,
-                               Målskillnad = t.GoalsFor - t.GoalsAgainst
+                               Målskillnad = t.GoalsFor - t.GoalsAgainst,
+                               TotMatcher = t.TotSpel,
+                               Vinster = t.Vinst,
+                               Förluster = t.Forlust,
+                               Oavgjorda = t.Oavgjord
                            })
                            .ToList();
 
@@ -332,15 +415,69 @@ namespace Grupp2_SUppgift
 
             }
 
-            
-
-
         }
 
+        private void btnSparaT_Click(object sender, EventArgs e)
+        {
+            if (DGVTabell.Rows.Count == 0)
+            {
+                MessageBox.Show("Ingen tabell att spara!");
+                return;
+            }
+            int seasonId = int.Parse(txtSpara.Text); // exempel – kan hämtas från TextBox/ComboBox
 
+            string connStr = @"Server=.\SQLEXPRESS;Database=LagDB;Trusted_Connection=True;";
 
+            using (var conn = new SqlConnection(connStr))
+            {
+                conn.Open();
 
+                //Rensa tidigare tabell för denna säsong
+                string deleteOld = "DELETE FROM Resultat WHERE SparaSom = @SparaSom";
+                using (var cmd = new SqlCommand(deleteOld, conn))
+                {
+                    cmd.Parameters.AddWithValue("@SparaSom", seasonId);
+                    cmd.ExecuteNonQuery();
+                }
 
+                //Lägg in rader från DataGridView
+                foreach (DataGridViewRow row in DGVTabell.Rows)
+                {
+                    if (row.IsNewRow) continue;
+
+                string insert = @"
+                INSERT INTO Resultat
+                (SparaSom, Name, TotSpel, Vinst, Oavgjord, Forlust, GoalsFor, GoalsAgainst, Difference, Ponts)
+                VALUES (@SparaSom, @Name, @TotSpel, @Vinst, @Oavgjord, @Forlust, @GoalsFor, @GoalsAgainst, @Difference, @Ponts);";
+
+                    using (var cmd = new SqlCommand(insert, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@SparaSom", seasonId);
+                        cmd.Parameters.AddWithValue("@Name", row.Cells["Lagnamn"].Value?.ToString() ?? "");
+                        cmd.Parameters.AddWithValue("@TotSpel", Convert.ToInt32(row.Cells["TotMatcher"].Value));
+                        cmd.Parameters.AddWithValue("@Vinst", Convert.ToInt32(row.Cells["Vinster"].Value));
+                        cmd.Parameters.AddWithValue("@Oavgjord", Convert.ToInt32(row.Cells["Oavgjorda"].Value));
+                        cmd.Parameters.AddWithValue("@Forlust", Convert.ToInt32(row.Cells["Förluster"].Value));
+                        cmd.Parameters.AddWithValue("@GoalsFor", Convert.ToInt32(row.Cells["GjordaMål"].Value));
+                        cmd.Parameters.AddWithValue("@GoalsAgainst", Convert.ToInt32(row.Cells["Insläppta"].Value));
+                        cmd.Parameters.AddWithValue("@Difference", Convert.ToInt32(row.Cells["Målskillnad"].Value));
+                        cmd.Parameters.AddWithValue("@Ponts", Convert.ToInt32(row.Cells["Poäng"].Value));
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+
+            MessageBox.Show($"Tabellen sparad för säsong {seasonId}!");
+        }
+
+        private void btnResultat_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+
+            frmResultat Res = new frmResultat();
+            Res.Show();
+
+        }
     }
     //    // Rensa textrutorna först
     //    if (lstLag.SelectedItems.Count > 4)
