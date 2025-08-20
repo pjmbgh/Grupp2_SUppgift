@@ -54,7 +54,7 @@ namespace Grupp2_SUppgift
             //lagen ska sedan skrivas i textrutor
             if (e.RowIndex >= 0)
             {
-                //Hämta värdet grån DataGrid
+                //Hämta värdet från DataGrid
                 string lagnamn = dataGridView1.Rows[e.RowIndex].Cells[0].Value.ToString();
 
                 //Fyll nästa tomma TextBox och kolla att lagen är unika
@@ -83,7 +83,7 @@ namespace Grupp2_SUppgift
                 //Alla txtboxar fyllda
                 else if (txtLagFyra.Text != "")
                 {
-                    MessageBox.Show("Alla 4 lag är redan valda.");
+                    MessageBox.Show("Alla lag är redan valda.");
                 }
             }
         }
@@ -188,7 +188,7 @@ namespace Grupp2_SUppgift
                                 AwayGoals = awayGoals
                             });
 
-                            // Räkna ihop "statistiken" coh antal spelade matcher
+                            // Räkna ihop "statistiken" och antal spelade matcher
                             home.GoalsFor += homeGoals;
                             home.GoalsAgainst += awayGoals;
                             away.GoalsFor += awayGoals;
